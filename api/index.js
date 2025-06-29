@@ -1,5 +1,4 @@
 const express = require('express');
-const serverless = require('serverless-http');
 const axios = require('axios');
 const helmet = require('helmet');
 const cors = require('cors');
@@ -15,6 +14,7 @@ app.use(helmet());
 app.use(cors({ origin: '*' }));
 app.use(express.json());
 
+// Rate limiter
 const limiter = rateLimit({
   windowMs: 1 * 60 * 1000,
   max: 60,
@@ -34,6 +34,7 @@ app.use((req, res, next) => {
 
 const cache = new NodeCache({ stdTTL: 300 });
 
+// Weather endpoint
 app.get('/weather', async (req, res) => {
   const city = req.query.city?.toLowerCase();
   if (!city) return res.status(400).json({ error: 'City is required' });
@@ -72,6 +73,7 @@ app.get('/weather', async (req, res) => {
   }
 });
 
+// Forecast endpoint
 app.get('/forecast', async (req, res) => {
   const city = req.query.city?.toLowerCase();
   if (!city) return res.status(400).json({ error: 'City is required' });
@@ -119,11 +121,11 @@ app.get('/forecast', async (req, res) => {
   }
 });
 
+// Health check endpoint
 app.get('/health', (req, res) => {
   res.json({ status: 'ok', uptime: process.uptime(), timestamp: new Date().toISOString() });
 });
 
-// 👇 Export for Vercel serverless
+// ✅ Export for Vercel (must be in /api folder as index.js)
 const serverless = require('serverless-http');
 module.exports = serverless(app);
-
