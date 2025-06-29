@@ -5,7 +5,6 @@ const helmet = require('helmet');
 const cors = require('cors');
 const rateLimit = require('express-rate-limit');
 const NodeCache = require('node-cache');
-const serverless = require('serverless-http'); // 🔥 Required for Vercel
 
 const app = express();
 const WEATHER_API_KEY = process.env.WEATHER_API_KEY;
@@ -129,5 +128,4 @@ app.get('/health', (req, res) => {
   res.json({ status: 'ok', uptime: process.uptime(), timestamp: new Date().toISOString() });
 });
 
-
-module.exports = serverless(app);
+module.exports = app;
