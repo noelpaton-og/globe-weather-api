@@ -4,16 +4,16 @@ from typing import Optional, List
 import requests
 import os
 import time
-from mangum import Mangum  # for AWS Lambda adapter used by Vercel
+from mangum import Mangum  # Adapter for AWS Lambda (used by Vercel)
 
-# FastAPI app
+# Initialize FastAPI app
 app = FastAPI()
 
-# Environment variables (set these on Vercel dashboard, not from .env in serverless)
+# Get environment variables
 WEATHER_API_KEY = os.environ.get("WEATHER_API_KEY")
 PRIVATE_API_KEY = os.environ.get("PRIVATE_API_KEY")
 
-# Validate env vars
+# Validate environment variables
 if not WEATHER_API_KEY or not PRIVATE_API_KEY:
     raise RuntimeError("Missing WEATHER_API_KEY or PRIVATE_API_KEY in environment")
 
@@ -47,12 +47,14 @@ class ForecastResponse(BaseModel):
     country: str
     forecast: List[ForecastDay]
 
-# --- API Key Validator ---
+# --- API Key Validation ---
+
 def validate_api_key(x_api_key: str):
     if x_api_key != PRIVATE_API_KEY:
         raise HTTPException(status_code=401, detail="Invalid API key")
 
 # --- Weather Endpoint ---
+
 @app.get("/weather", response_model=WeatherResponse)
 def get_weather(city: str, x_api_key: str = Header(...)):
     validate_api_key(x_api_key)
@@ -87,6 +89,7 @@ def get_weather(city: str, x_api_key: str = Header(...)):
         raise HTTPException(status_code=500, detail=f"Error fetching weather: {e}")
 
 # --- Forecast Endpoint ---
+
 @app.get("/forecast", response_model=ForecastResponse)
 def get_forecast(city: str, x_api_key: str = Header(...)):
     validate_api_key(x_api_key)
@@ -121,7 +124,8 @@ def get_forecast(city: str, x_api_key: str = Header(...)):
     except requests.RequestException as e:
         raise HTTPException(status_code=500, detail=f"Error fetching forecast: {e}")
 
-# --- Health Check ---
+# --- Health Check Endpoint ---
+
 @app.get("/health")
 def health():
     return {
@@ -130,5 +134,12 @@ def health():
         "timestamp": time.strftime("%Y-%m-%dT%H:%M:%SZ", time.gmtime())
     }
 
+# --- Root Test Endpoint ---
+
+@app.get("/")
+def root():
+    return {"message": "API is alive"}
+
 # --- Vercel Handler ---
+
 handler = Mangum(app)
