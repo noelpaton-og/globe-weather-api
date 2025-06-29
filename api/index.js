@@ -11,7 +11,7 @@ const app = express();
 const WEATHER_API_KEY = process.env.WEATHER_API_KEY;
 const PRIVATE_API_KEY = process.env.PRIVATE_API_KEY;
 
-// Check env vars early
+// Early env check (console error won't stop deploy but helps debugging)
 if (!WEATHER_API_KEY) {
   console.error('ERROR: WEATHER_API_KEY is not set');
 }
@@ -23,15 +23,15 @@ app.use(helmet());
 app.use(cors({ origin: '*' }));
 app.use(express.json());
 
-// Rate limiter
+// Rate limiter — prevents abuse, keep it
 const limiter = rateLimit({
-  windowMs: 1 * 60 * 1000, // 1 minute
-  max: 60,
+  windowMs: 1 * 60 * 1000, // 1 minute window
+  max: 60, // max 60 requests per IP per window
   message: 'Too many requests from this IP, please try again later.'
 });
 app.use(limiter);
 
-// API Key Middleware
+// API Key middleware — skip for health check
 app.use((req, res, next) => {
   if (req.path === '/health') return next();
 
@@ -43,7 +43,7 @@ app.use((req, res, next) => {
   next();
 });
 
-const cache = new NodeCache({ stdTTL: 300 });
+const cache = new NodeCache({ stdTTL: 300 }); // Cache for 5 minutes
 
 // Weather endpoint
 app.get('/weather', async (req, res) => {
@@ -64,7 +64,7 @@ app.get('/weather', async (req, res) => {
   try {
     const response = await axios.get('https://api.weatherapi.com/v1/current.json', {
       params: { key: WEATHER_API_KEY, q: city, aqi: 'no' },
-      timeout: 7000
+      timeout: 7000, // 7 seconds timeout
     });
 
     const data = response.data;
@@ -80,7 +80,7 @@ app.get('/weather', async (req, res) => {
       wind_kph: data.current.wind_kph,
       humidity: data.current.humidity,
       feelslike_c: data.current.feelslike_c,
-      uv_index: data.current.uv
+      uv_index: data.current.uv,
     };
 
     cache.set(city, formatted);
@@ -89,7 +89,7 @@ app.get('/weather', async (req, res) => {
     console.error('Error fetching weather:', err.message);
     res.status(err.response?.status || 500).json({
       error: 'Failed to fetch weather data',
-      message: err.message
+      message: err.message,
     });
   }
 });
@@ -118,9 +118,9 @@ app.get('/forecast', async (req, res) => {
         q: city,
         days: 3,
         aqi: 'no',
-        alerts: 'no'
+        alerts: 'no',
       },
-      timeout: 7000
+      timeout: 7000,
     });
 
     const data = response.data;
@@ -132,13 +132,13 @@ app.get('/forecast', async (req, res) => {
       condition: day.day.condition.text,
       icon_url: `https:${day.day.condition.icon}`,
       chance_of_rain: day.day.daily_chance_of_rain,
-      uv_index: day.day.uv
+      uv_index: day.day.uv,
     }));
 
     const result = {
       city: data.location.name,
       country: data.location.country,
-      forecast: forecastData
+      forecast: forecastData,
     };
 
     cache.set(cacheKey, result);
@@ -147,7 +147,7 @@ app.get('/forecast', async (req, res) => {
     console.error('Error fetching forecast:', err.message);
     res.status(err.response?.status || 500).json({
       error: 'Failed to fetch forecast data',
-      message: err.message
+      message: err.message,
     });
   }
 });
@@ -157,6 +157,6 @@ app.get('/health', (req, res) => {
   res.json({ status: 'ok', uptime: process.uptime(), timestamp: new Date().toISOString() });
 });
 
-// Export for Vercel
+// Export for Vercel serverless deployment
 const serverless = require('serverless-http');
 module.exports = serverless(app);
