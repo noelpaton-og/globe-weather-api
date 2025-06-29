@@ -21,8 +21,9 @@ const limiter = rateLimit({
 });
 app.use(limiter);
 
-// 🔐 API Key Middleware
+// 🔐 API Key Middleware with health check bypass
 app.use((req, res, next) => {
+  if (req.path === '/health') return next(); // Allow public access to /health
   const userKey = req.headers['x-api-key'];
   if (!userKey || userKey !== PRIVATE_API_KEY) {
     return res.status(401).json({ error: 'Unauthorized' });
