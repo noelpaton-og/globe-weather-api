@@ -123,6 +123,6 @@ app.get('/health', (req, res) => {
   res.json({ status: 'ok', uptime: process.uptime(), timestamp: new Date().toISOString() });
 });
 
-// Export the serverless handler
+// 👇 Export for Vercel serverless
 module.exports = app;
 module.exports.handler = serverless(app);
