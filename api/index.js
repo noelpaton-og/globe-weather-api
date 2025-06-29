@@ -1,13 +1,13 @@
-require('dotenv').config();
 const express = require('express');
+const serverless = require('serverless-http');
 const axios = require('axios');
 const helmet = require('helmet');
 const cors = require('cors');
 const rateLimit = require('express-rate-limit');
 const NodeCache = require('node-cache');
+require('dotenv').config();
 
 const app = express();
-const PORT = process.env.PORT || 3000;
 const WEATHER_API_KEY = process.env.WEATHER_API_KEY;
 const PRIVATE_API_KEY = process.env.PRIVATE_API_KEY;
 
@@ -22,9 +22,9 @@ const limiter = rateLimit({
 });
 app.use(limiter);
 
-// 🔐 API Key Middleware with health check bypass
+// API Key Middleware
 app.use((req, res, next) => {
-  if (req.path === '/health') return next(); // Allow public access to /health
+  if (req.path === '/health') return next();
   const userKey = req.headers['x-api-key'];
   if (!userKey || userKey !== PRIVATE_API_KEY) {
     return res.status(401).json({ error: 'Unauthorized' });
@@ -43,15 +43,10 @@ app.get('/weather', async (req, res) => {
 
   try {
     const response = await axios.get('http://api.weatherapi.com/v1/current.json', {
-      params: {
-        key: WEATHER_API_KEY,
-        q: city,
-        aqi: 'no'
-      }
+      params: { key: WEATHER_API_KEY, q: city, aqi: 'no' }
     });
 
     const data = response.data;
-
     const formatted = {
       city: data.location.name,
       region: data.location.region,
@@ -70,11 +65,10 @@ app.get('/weather', async (req, res) => {
     cache.set(city, formatted);
     res.json(formatted);
   } catch (err) {
-    if (err.response) {
-      res.status(err.response.status).json({ error: 'Unable to retrieve weather data at this time' });
-    } else {
-      res.status(500).json({ error: 'Internal server error', message: err.message });
-    }
+    res.status(err.response?.status || 500).json({
+      error: 'Failed to fetch weather data',
+      message: err.message
+    });
   }
 });
 
@@ -118,11 +112,10 @@ app.get('/forecast', async (req, res) => {
     cache.set(cacheKey, result);
     res.json(result);
   } catch (err) {
-    if (err.response) {
-      res.status(err.response.status).json({ error: 'Unable to retrieve forecast data at this time' });
-    } else {
-      res.status(500).json({ error: 'Internal server error', message: err.message });
-    }
+    res.status(err.response?.status || 500).json({
+      error: 'Failed to fetch forecast data',
+      message: err.message
+    });
   }
 });
 
@@ -130,7 +123,6 @@ app.get('/health', (req, res) => {
   res.json({ status: 'ok', uptime: process.uptime(), timestamp: new Date().toISOString() });
 });
 
-// ✅ Start the server
-app.listen(PORT, () => {
-  console.log(`🌦️ Weather API server running at http://localhost:${PORT}`);
-});
+// Export the serverless handler
+module.exports = app;
+module.exports.handler = serverless(app);
