@@ -1,12 +1,14 @@
 {
   "name": "weather-api",
   "version": "1.0.0",
+  "description": "A weather API using Express.js, deployed as a serverless function on Vercel.",
   "main": "api/index.js",
   "scripts": {
-    "dev": "node api/index.js"
+    "dev": "node api/index.js",
+    "start": "node api/index.js"
   },
-  "keywords": [],
-  "author": "",
+  "keywords": ["weather", "express", "api", "vercel", "serverless"],
+  "author": "your-name",
   "license": "ISC",
   "dependencies": {
     "axios": "^1.10.0",
@@ -18,5 +20,7 @@
     "node-cache": "^5.1.2",
     "serverless-http": "^3.2.0"
   },
-  "description": ""
+  "engines": {
+    "node": "18.x"
+  }
 }
