@@ -7,6 +7,7 @@ const rateLimit = require('express-rate-limit');
 const NodeCache = require('node-cache');
 
 const app = express();
+const PORT = process.env.PORT || 3000;
 const WEATHER_API_KEY = process.env.WEATHER_API_KEY;
 const PRIVATE_API_KEY = process.env.PRIVATE_API_KEY;
 
@@ -129,4 +130,7 @@ app.get('/health', (req, res) => {
   res.json({ status: 'ok', uptime: process.uptime(), timestamp: new Date().toISOString() });
 });
 
-module.exports = app;
+// ✅ Start the server
+app.listen(PORT, () => {
+  console.log(`🌦️ Weather API server running at http://localhost:${PORT}`);
+});
