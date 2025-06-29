@@ -2,26 +2,26 @@ from fastapi import FastAPI, HTTPException, Header
 from pydantic import BaseModel
 from typing import Optional, List
 import requests
-from dotenv import load_dotenv
 import os
 import time
-from mangum import Mangum  # Required for Vercel
+from mangum import Mangum  # for AWS Lambda adapter used by Vercel
 
-# Load .env variables
-load_dotenv()
-
+# FastAPI app
 app = FastAPI()
 
-WEATHER_API_KEY = os.getenv("WEATHER_API_KEY")
-PRIVATE_API_KEY = os.getenv("PRIVATE_API_KEY")
+# Environment variables (set these on Vercel dashboard, not from .env in serverless)
+WEATHER_API_KEY = os.environ.get("WEATHER_API_KEY")
+PRIVATE_API_KEY = os.environ.get("PRIVATE_API_KEY")
 
+# Validate env vars
 if not WEATHER_API_KEY or not PRIVATE_API_KEY:
-    raise Exception("Missing required API keys in environment variables")
+    raise RuntimeError("Missing WEATHER_API_KEY or PRIVATE_API_KEY in environment")
 
-# Models
+# --- Pydantic models ---
+
 class WeatherResponse(BaseModel):
     city: str
-    region: Optional[str] = None
+    region: Optional[str]
     country: str
     localtime: str
     temperature_c: float
@@ -47,23 +47,28 @@ class ForecastResponse(BaseModel):
     country: str
     forecast: List[ForecastDay]
 
+# --- API Key Validator ---
 def validate_api_key(x_api_key: str):
     if x_api_key != PRIVATE_API_KEY:
-        raise HTTPException(status_code=401, detail="Unauthorized")
+        raise HTTPException(status_code=401, detail="Invalid API key")
 
+# --- Weather Endpoint ---
 @app.get("/weather", response_model=WeatherResponse)
 def get_weather(city: str, x_api_key: str = Header(...)):
     validate_api_key(x_api_key)
+
     try:
-        r = requests.get("https://api.weatherapi.com/v1/current.json", params={
-            "key": WEATHER_API_KEY,
-            "q": city,
-            "aqi": "no"
-        }, timeout=7)
-        r.raise_for_status()
-        data = r.json()
+        res = requests.get(
+            "https://api.weatherapi.com/v1/current.json",
+            params={"key": WEATHER_API_KEY, "q": city, "aqi": "no"},
+            timeout=7
+        )
+        res.raise_for_status()
+        data = res.json()
+
         current = data["current"]
         location = data["location"]
+
         return WeatherResponse(
             city=location["name"],
             region=location.get("region"),
@@ -79,22 +84,23 @@ def get_weather(city: str, x_api_key: str = Header(...)):
             uv_index=current["uv"]
         )
     except requests.RequestException as e:
-        raise HTTPException(status_code=500, detail=f"Failed to fetch weather data: {e}")
+        raise HTTPException(status_code=500, detail=f"Error fetching weather: {e}")
 
+# --- Forecast Endpoint ---
 @app.get("/forecast", response_model=ForecastResponse)
 def get_forecast(city: str, x_api_key: str = Header(...)):
     validate_api_key(x_api_key)
+
     try:
-        r = requests.get("https://api.weatherapi.com/v1/forecast.json", params={
-            "key": WEATHER_API_KEY,
-            "q": city,
-            "days": 3,
-            "aqi": "no",
-            "alerts": "no"
-        }, timeout=7)
-        r.raise_for_status()
-        data = r.json()
-        forecast_days = [
+        res = requests.get(
+            "https://api.weatherapi.com/v1/forecast.json",
+            params={"key": WEATHER_API_KEY, "q": city, "days": 3, "aqi": "no", "alerts": "no"},
+            timeout=7
+        )
+        res.raise_for_status()
+        data = res.json()
+
+        forecast = [
             ForecastDay(
                 date=day["date"],
                 maxtemp_c=day["day"]["maxtemp_c"],
@@ -106,14 +112,16 @@ def get_forecast(city: str, x_api_key: str = Header(...)):
             )
             for day in data["forecast"]["forecastday"]
         ]
+
         return ForecastResponse(
             city=data["location"]["name"],
             country=data["location"]["country"],
-            forecast=forecast_days
+            forecast=forecast
         )
     except requests.RequestException as e:
-        raise HTTPException(status_code=500, detail=f"Failed to fetch forecast data: {e}")
+        raise HTTPException(status_code=500, detail=f"Error fetching forecast: {e}")
 
+# --- Health Check ---
 @app.get("/health")
 def health():
     return {
@@ -122,5 +130,5 @@ def health():
         "timestamp": time.strftime("%Y-%m-%dT%H:%M:%SZ", time.gmtime())
     }
 
-# 👇 THIS IS CRUCIAL FOR VERCEL
+# --- Vercel Handler ---
 handler = Mangum(app)
