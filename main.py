@@ -5,18 +5,22 @@ import requests
 from dotenv import load_dotenv
 import os
 import time
+from mangum import Mangum  # required for Vercel
 
+# Load .env variables
 load_dotenv()
 
 app = FastAPI()
+handler = Mangum(app)  # required for Vercel deployment
 
+# Load API keys
 WEATHER_API_KEY = os.getenv("WEATHER_API_KEY")
 PRIVATE_API_KEY = os.getenv("PRIVATE_API_KEY")
 
 if not WEATHER_API_KEY or not PRIVATE_API_KEY:
-    raise Exception("Missing required API keys in environment variables")
+    raise RuntimeError("Missing WEATHER_API_KEY or PRIVATE_API_KEY")
 
-# Models
+# Response models
 class WeatherResponse(BaseModel):
     city: str
     region: Optional[str] = None
@@ -37,7 +41,7 @@ class ForecastDay(BaseModel):
     mintemp_c: float
     condition: str
     icon_url: str
-    chance_of_rain: Optional[int]  # Make optional in case API does not provide it
+    chance_of_rain: Optional[int]
     uv_index: float
 
 class ForecastResponse(BaseModel):
@@ -45,27 +49,23 @@ class ForecastResponse(BaseModel):
     country: str
     forecast: List[ForecastDay]
 
-# Helper function for API key validation
+# Helper
 def validate_api_key(x_api_key: str):
     if x_api_key != PRIVATE_API_KEY:
         raise HTTPException(status_code=401, detail="Unauthorized")
 
-# /weather endpoint
+# Weather endpoint
 @app.get("/weather", response_model=WeatherResponse)
 def get_weather(city: str, x_api_key: str = Header(...)):
     validate_api_key(x_api_key)
 
     url = "https://api.weatherapi.com/v1/current.json"
-    params = {
-        "key": WEATHER_API_KEY,
-        "q": city,
-        "aqi": "no"
-    }
+    params = {"key": WEATHER_API_KEY, "q": city, "aqi": "no"}
 
     try:
-        r = requests.get(url, params=params, timeout=7)
-        r.raise_for_status()
-        data = r.json()
+        response = requests.get(url, params=params, timeout=7)
+        response.raise_for_status()
+        data = response.json()
         current = data["current"]
         location = data["location"]
 
@@ -86,33 +86,27 @@ def get_weather(city: str, x_api_key: str = Header(...)):
     except requests.RequestException as e:
         raise HTTPException(status_code=500, detail=f"Failed to fetch weather data: {e}")
 
-# /forecast endpoint
+# Forecast endpoint
 @app.get("/forecast", response_model=ForecastResponse)
 def get_forecast(city: str, x_api_key: str = Header(...)):
     validate_api_key(x_api_key)
 
     url = "https://api.weatherapi.com/v1/forecast.json"
-    params = {
-        "key": WEATHER_API_KEY,
-        "q": city,
-        "days": 3,
-        "aqi": "no",
-        "alerts": "no"
-    }
+    params = {"key": WEATHER_API_KEY, "q": city, "days": 3, "aqi": "no", "alerts": "no"}
 
     try:
-        r = requests.get(url, params=params, timeout=7)
-        r.raise_for_status()
-        data = r.json()
+        response = requests.get(url, params=params, timeout=7)
+        response.raise_for_status()
+        data = response.json()
 
-        forecast_days = [
+        forecast = [
             ForecastDay(
                 date=day["date"],
                 maxtemp_c=day["day"]["maxtemp_c"],
                 mintemp_c=day["day"]["mintemp_c"],
                 condition=day["day"]["condition"]["text"],
                 icon_url=f"https:{day['day']['condition']['icon']}",
-                chance_of_rain=day["day"].get("daily_chance_of_rain"),  # safer with get()
+                chance_of_rain=day["day"].get("daily_chance_of_rain"),
                 uv_index=day["day"]["uv"],
             )
             for day in data["forecast"]["forecastday"]
@@ -121,16 +115,16 @@ def get_forecast(city: str, x_api_key: str = Header(...)):
         return ForecastResponse(
             city=data["location"]["name"],
             country=data["location"]["country"],
-            forecast=forecast_days
+            forecast=forecast
         )
     except requests.RequestException as e:
         raise HTTPException(status_code=500, detail=f"Failed to fetch forecast data: {e}")
 
-# /health endpoint
+# Health check endpoint
 @app.get("/health")
 def health():
     return {
         "status": "ok",
-        "uptime_seconds": int(time.perf_counter()),  # better uptime metric
+        "uptime_seconds": int(time.perf_counter()),
         "timestamp": time.strftime("%Y-%m-%dT%H:%M:%SZ", time.gmtime())
     }
