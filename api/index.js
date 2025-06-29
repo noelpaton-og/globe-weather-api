@@ -7,8 +7,17 @@ const NodeCache = require('node-cache');
 require('dotenv').config();
 
 const app = express();
+
 const WEATHER_API_KEY = process.env.WEATHER_API_KEY;
 const PRIVATE_API_KEY = process.env.PRIVATE_API_KEY;
+
+// Check env vars early
+if (!WEATHER_API_KEY) {
+  console.error('ERROR: WEATHER_API_KEY is not set');
+}
+if (!PRIVATE_API_KEY) {
+  console.error('ERROR: PRIVATE_API_KEY is not set');
+}
 
 app.use(helmet());
 app.use(cors({ origin: '*' }));
@@ -16,7 +25,7 @@ app.use(express.json());
 
 // Rate limiter
 const limiter = rateLimit({
-  windowMs: 1 * 60 * 1000,
+  windowMs: 1 * 60 * 1000, // 1 minute
   max: 60,
   message: 'Too many requests from this IP, please try again later.'
 });
@@ -25,8 +34,10 @@ app.use(limiter);
 // API Key Middleware
 app.use((req, res, next) => {
   if (req.path === '/health') return next();
+
   const userKey = req.headers['x-api-key'];
   if (!userKey || userKey !== PRIVATE_API_KEY) {
+    console.log(`Unauthorized access attempt to ${req.path} with key: ${userKey}`);
     return res.status(401).json({ error: 'Unauthorized' });
   }
   next();
@@ -36,15 +47,24 @@ const cache = new NodeCache({ stdTTL: 300 });
 
 // Weather endpoint
 app.get('/weather', async (req, res) => {
+  console.log('GET /weather', req.query);
+
   const city = req.query.city?.toLowerCase();
-  if (!city) return res.status(400).json({ error: 'City is required' });
+  if (!city) {
+    console.log('City is required');
+    return res.status(400).json({ error: 'City is required' });
+  }
 
   const cached = cache.get(city);
-  if (cached) return res.json(cached);
+  if (cached) {
+    console.log('Returning cached weather for:', city);
+    return res.json(cached);
+  }
 
   try {
-    const response = await axios.get('http://api.weatherapi.com/v1/current.json', {
-      params: { key: WEATHER_API_KEY, q: city, aqi: 'no' }
+    const response = await axios.get('https://api.weatherapi.com/v1/current.json', {
+      params: { key: WEATHER_API_KEY, q: city, aqi: 'no' },
+      timeout: 7000
     });
 
     const data = response.data;
@@ -66,6 +86,7 @@ app.get('/weather', async (req, res) => {
     cache.set(city, formatted);
     res.json(formatted);
   } catch (err) {
+    console.error('Error fetching weather:', err.message);
     res.status(err.response?.status || 500).json({
       error: 'Failed to fetch weather data',
       message: err.message
@@ -75,22 +96,31 @@ app.get('/weather', async (req, res) => {
 
 // Forecast endpoint
 app.get('/forecast', async (req, res) => {
+  console.log('GET /forecast', req.query);
+
   const city = req.query.city?.toLowerCase();
-  if (!city) return res.status(400).json({ error: 'City is required' });
+  if (!city) {
+    console.log('City is required');
+    return res.status(400).json({ error: 'City is required' });
+  }
 
   const cacheKey = `forecast_${city}`;
   const cached = cache.get(cacheKey);
-  if (cached) return res.json(cached);
+  if (cached) {
+    console.log('Returning cached forecast for:', city);
+    return res.json(cached);
+  }
 
   try {
-    const response = await axios.get('http://api.weatherapi.com/v1/forecast.json', {
+    const response = await axios.get('https://api.weatherapi.com/v1/forecast.json', {
       params: {
         key: WEATHER_API_KEY,
         q: city,
         days: 3,
         aqi: 'no',
         alerts: 'no'
-      }
+      },
+      timeout: 7000
     });
 
     const data = response.data;
@@ -114,6 +144,7 @@ app.get('/forecast', async (req, res) => {
     cache.set(cacheKey, result);
     res.json(result);
   } catch (err) {
+    console.error('Error fetching forecast:', err.message);
     res.status(err.response?.status || 500).json({
       error: 'Failed to fetch forecast data',
       message: err.message
@@ -126,6 +157,6 @@ app.get('/health', (req, res) => {
   res.json({ status: 'ok', uptime: process.uptime(), timestamp: new Date().toISOString() });
 });
 
-// ✅ Export for Vercel (must be in /api folder as index.js)
+// Export for Vercel
 const serverless = require('serverless-http');
 module.exports = serverless(app);
