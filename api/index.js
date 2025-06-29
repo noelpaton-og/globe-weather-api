@@ -5,9 +5,9 @@ const helmet = require('helmet');
 const cors = require('cors');
 const rateLimit = require('express-rate-limit');
 const NodeCache = require('node-cache');
+const serverless = require('serverless-http'); // 🔥 Required for Vercel
 
 const app = express();
-const PORT = process.env.PORT || 3000;
 const WEATHER_API_KEY = process.env.WEATHER_API_KEY;
 const PRIVATE_API_KEY = process.env.PRIVATE_API_KEY;
 
@@ -22,6 +22,7 @@ const limiter = rateLimit({
 });
 app.use(limiter);
 
+// 🔐 API Key Middleware
 app.use((req, res, next) => {
   const userKey = req.headers['x-api-key'];
   if (!userKey || userKey !== PRIVATE_API_KEY) {
@@ -128,6 +129,5 @@ app.get('/health', (req, res) => {
   res.json({ status: 'ok', uptime: process.uptime(), timestamp: new Date().toISOString() });
 });
 
-app.listen(PORT, () => {
-  console.log(`Weather API is live on port ${PORT}`);
-});
+
+module.exports = serverless(app);
