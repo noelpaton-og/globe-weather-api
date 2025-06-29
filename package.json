@@ -22,8 +22,5 @@
     "helmet": "^8.1.0",
     "node-cache": "^5.1.2",
     "serverless-http": "^3.2.0"
-  },
-  "engines": {
-    "node": "18.x"
   }
 }
