@@ -1,5 +1,3 @@
-# globe-weather-api
-
 Globe Weather API
 ------------------
 
