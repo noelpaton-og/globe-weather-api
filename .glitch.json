@@ -1,4 +1,0 @@
-{
-  "install": "python3 -m pip install --upgrade pip && pip install -r requirements.txt",
-  "start": "python3 -m uvicorn main:app --host 0.0.0.0 --port 3000"
-}
