@@ -1,2 +1,7 @@
-[functions]
-  directory = "functions"
+[build]
+  functions = "functions"
+
+[[redirects]]
+  from = "/favicon.ico"
+  to = "/favicon.ico"
+  status = 200
