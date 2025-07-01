@@ -1,14 +1,19 @@
 {
-  "name": "weather-vercel-api",
+  "name": "globe-weather-api",
   "version": "1.0.0",
-  "type": "module",
-  "engines": {
-    "node": "18.x"
-  },
+  "description": "A Netlify Function proxy for Back4App Cloud Code Weather API",
+  "main": "index.js",
   "scripts": {
-    "start": "node api/index.js"
+    "dev": "netlify dev",
+    "build": "echo 'No build needed'"
   },
+  "keywords": ["netlify", "serverless", "weather", "back4app"],
+  "author": "your-name",
+  "license": "MIT",
   "dependencies": {
-    "axios": "^1.6.8"
+    "axios": "^1.6.0"
+  },
+  "engines": {
+    "node": ">=18.0.0"
   }
 }
