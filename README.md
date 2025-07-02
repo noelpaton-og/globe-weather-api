@@ -6,7 +6,7 @@ A fast and secure RESTful API to get real-time weather data by city using data f
 Base URL:
 ---------
 
-https://your-deployment-url.com
+[https://your-deployment-url.com](https://globe-weather-api.netlify.app/.netlify/functions)
 
 Usage:
 ------
