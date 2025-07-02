@@ -1,71 +1,61 @@
-Globe Weather API
-------------------
+# Global Weather API
 
-A fast and secure RESTful API to get real-time weather data by city using data from WeatherAPI.com. The API is protected with a private key to prevent unauthorized access.
+The **Global Weather API** provides real-time weather and environmental data for cities around the world. It offers simple, RESTful endpoints that allow developers to fetch current weather, 5-day forecasts, air quality, astronomical data, and timezone information using only a city name.
 
-Base URL:
----------
+---
 
-[https://your-deployment-url.com](https://globe-weather-api.netlify.app/.netlify/functions)
+## Base URL
 
-Usage:
-------
+```
+https://globe-weather-api.netlify.app/.netlify/functions
+```
 
-Endpoint:
-  GET /weather?city={city_name}
+---
 
-Headers:
-  x-api-key: your_public_api_key
+## Endpoints
 
-Example Request:
-  GET /weather?city=London
-  Header: x-api-key: your_public_api_key
+| Endpoint      | Description                              | Example                        |
+| ------------- | ---------------------------------------- | ------------------------------ |
+| `/weather`    | Current weather data for a city          | `/weather?city=London`         |
+| `/forecast`   | 5-day weather forecast                   | `/forecast?city=Tokyo`         |
+| `/airquality` | Air quality index and pollutant levels   | `/airquality?city=Los Angeles` |
+| `/astronomy`  | Sunrise, sunset, moonrise, moonset times | `/astronomy?city=Cairo`        |
+| `/timezone`   | Current local time and timezone info     | `/timezone?city=Sydney`        |
 
-Example Response:
-  {
-    "city": "Tokyo",
-    "region": "Tokyo",
-    "country": "Japan",
-    "localtime": "2025-06-29 12:21",
-    "temperature_c": 32.4,
-    "temperature_f": 90.3,
-    "condition": "Partly cloudy",
-    "icon_url": "https://cdn.weatherapi.com/weather/64x64/day/116.png",
-    "wind_kph": 18.7,
-    "humidity": 56,
-    "feelslike_c": 35.6,
-    "uv_index": 10.3
-  }
+&gt; All endpoints require the `city` query parameter.
 
-Additional Endpoint:
---------------------
+---
 
-GET /health
+## Example Request
 
-Use this to check if the API is up and running.
+**GET** `/weather?city=New York`
 
-Response:
-  {
-    "status": "ok",
-    "uptime": 123.45,
-    "timestamp": "2025-06-29T12:00:00.000Z"
-  }
+**Response**
 
-Rate Limits:
-------------
+```json
+{
+  "city": "New York",
+  "temperature": "26°C",
+  "description": "Partly cloudy",
+  "humidity": "60%",
+  "wind_speed": "14 km/h"
+}
+```
 
-60 requests per minute per IP address.
+---
 
-Authorization:
---------------
+## How to Use
 
-All requests must include the correct x-api-key header. Requests without it will return:
-  {
-    "error": "Unauthorized"
-  }
+1. Select the endpoint you need.
+2. Add the `city` parameter in the query string.
+3. Send a GET request using any HTTP client (like `fetch`, `axios`, or Postman).
+4. Receive JSON-formatted weather data.
 
-License:
---------
+---
 
-This project is licensed under the MIT License.
-See LICENSE.txt for full terms.
+## Features
+
+* Easy-to-use RESTful interface
+* Global city coverage
+* No API key required (public access)
+* Optimized for speed and simplicity
