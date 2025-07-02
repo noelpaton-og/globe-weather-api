@@ -21,12 +21,27 @@ exports.handler = async (event) => {
     };
   }
 
-  const clientHeaders = event.headers || {};
+  // Normalize header keys to lowercase
+  const clientHeaders = {};
+  for (let key in event.headers) {
+    clientHeaders[key.toLowerCase()] = event.headers[key];
+  }
+
+  // Allow unauthenticated health check (for RapidAPI)
+  if (event.path.includes("/ping")) {
+    return {
+      statusCode: 200,
+      headers,
+      body: JSON.stringify({ status: "healthy" }),
+    };
+  }
+
+  // API key validation
   if (clientHeaders["x-api-key"] !== privateKey) {
     return {
       statusCode: 401,
       headers,
-      body: JSON.stringify({ error: "Unauthorized" }),
+      body: JSON.stringify({ error: "Unauthorized – Invalid API Key" }),
     };
   }
 
@@ -36,8 +51,16 @@ exports.handler = async (event) => {
   if (method === "GET") {
     city = event.queryStringParameters?.city;
   } else if (method === "POST") {
-    const body = JSON.parse(event.body || "{}");
-    city = body.city;
+    try {
+      const body = JSON.parse(event.body || "{}");
+      city = body.city;
+    } catch (err) {
+      return {
+        statusCode: 400,
+        headers,
+        body: JSON.stringify({ error: "Invalid JSON in request body" }),
+      };
+    }
   }
 
   if (!city) {
@@ -81,7 +104,7 @@ exports.handler = async (event) => {
     return {
       statusCode: 500,
       headers,
-      body: JSON.stringify({ error: err.message }),
+      body: JSON.stringify({ error: "Failed to fetch weather data", detail: err.message }),
     };
   }
 };
