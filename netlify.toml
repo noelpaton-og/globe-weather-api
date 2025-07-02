@@ -1,6 +1,14 @@
 [build]
   functions = "functions"
 
+[[headers]]
+  for = "/.netlify/functions/*"
+  [headers.values]
+    Access-Control-Allow-Origin = "*"
+    Access-Control-Allow-Headers = "Content-Type, x-api-key"
+    Access-Control-Allow-Methods = "GET, POST, OPTIONS"
+    Content-Type = "application/json"
+
 [[redirects]]
   from = "/favicon.ico"
   to = "/favicon.ico"
